@@ -469,9 +469,23 @@ var forgotPassword = async (payload) => {
     otp,
     expirationMinutes: expirationSeconds / 60
   };
+  let html = "";
   try {
-    const html = await ejs.renderFile(templatePath, templateData);
-    if (config_default.email_sender && config_default.smtp_user) {
+    html = await ejs.renderFile(templatePath, templateData);
+  } catch (templateErr) {
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <h2>Password Reset Request</h2>
+        <p>Hello ${isUserExist.name}, we received a request to reset your password.</p>
+        <p>Use the OTP below to reset your password:</p>
+        <div style="display: inline-block; padding: 12px 24px; background: #f0f4ff; color: #007bff; font-size: 28px; font-weight: bold; letter-spacing: 8px; border-radius: 4px; margin-top: 20px;">${otp}</div>
+        <p>This OTP will expire in ${expirationSeconds / 60} minutes. If you did not request a password reset, please ignore this email.</p>
+        <div style="margin-top: 30px; font-size: 12px; color: #888;">&copy; Courier System. All rights reserved.</div>
+      </div>
+    `;
+  }
+  try {
+    if (config_default.email_sender && config_default.smtp_user && config_default.smtp_user !== "demo") {
       await transporter.sendMail({
         from: config_default.email_sender,
         to: isUserExist.email,
@@ -541,14 +555,26 @@ var resetPassword = async (payload) => {
       console.warn("Redis del OTP error:", err);
     }
   }
+  let html = "";
   try {
     const templatePath = path2.join(
       process.cwd(),
       "src/templates/reset-password-success.ejs"
     );
     const templateData = { name: isUserExist.name };
-    const html = await ejs.renderFile(templatePath, templateData);
-    if (config_default.email_sender && config_default.smtp_user) {
+    html = await ejs.renderFile(templatePath, templateData);
+  } catch (templateErr) {
+    html = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <h2>Password Reset Successful</h2>
+        <p>Hello ${isUserExist.name}, your account password has been successfully updated.</p>
+        <p>If you did not make this change, please contact support immediately.</p>
+        <div style="margin-top: 30px; font-size: 12px; color: #888;">&copy; Courier System. All rights reserved.</div>
+      </div>
+    `;
+  }
+  try {
+    if (config_default.email_sender && config_default.smtp_user && config_default.smtp_user !== "demo") {
       await transporter.sendMail({
         from: config_default.email_sender,
         to: isUserExist.email,
