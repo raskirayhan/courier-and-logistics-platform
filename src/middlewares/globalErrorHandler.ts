@@ -18,7 +18,11 @@ export const globalErrorHandler: ErrorRequestHandler = (
   let message: string = "Something went wrong!";
   let errors: IErrorMessage[] = [];
 
-  if (err instanceof AppError) {
+  if (
+    err instanceof AppError ||
+    err?.name === "AppError" ||
+    (typeof err?.statusCode === "number" && err.statusCode >= 400 && err.statusCode < 600)
+  ) {
     statusCode = err.statusCode;
     message = err.message;
     errors = [
@@ -53,7 +57,7 @@ export const globalErrorHandler: ErrorRequestHandler = (
     message = "Invalid JSON body format. Please check your request payload syntax.";
     errors = [{ path: req.originalUrl, message }];
   } else if (err instanceof Error) {
-    statusCode = (err as any).statusCode || httpStatus.BAD_REQUEST;
+    statusCode = (err as any).statusCode || httpStatus.INTERNAL_SERVER_ERROR;
     message = err.message || message;
     errors = [{ path: req.originalUrl, message: err.message }];
   }
@@ -62,6 +66,5 @@ export const globalErrorHandler: ErrorRequestHandler = (
     success: false,
     message,
     errors,
-    stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
   });
 };
