@@ -12,10 +12,12 @@ import {
 const REDIS_HUBS_CACHE_KEY = "hubs:all";
 
 const invalidateHubsCache = async () => {
-  try {
-    await redisClient.del([REDIS_HUBS_CACHE_KEY]);
-  } catch (err) {
-    console.warn("Failed to invalidate hubs Redis cache:", err);
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.del([REDIS_HUBS_CACHE_KEY]);
+    } catch (err) {
+      console.warn("Failed to invalidate hubs Redis cache:", err);
+    }
   }
 };
 
@@ -60,7 +62,7 @@ export const getAllHubsFromDB = async (filters: IHubFilterOptions) => {
   const isDefaultQuery =
     !searchTerm && !zone && page === 1 && limit === 10 && sortBy === "createdAt";
 
-  if (isDefaultQuery) {
+  if (isDefaultQuery && redisClient.isOpen) {
     try {
       const cached = await redisClient.get(REDIS_HUBS_CACHE_KEY);
       if (cached) {
@@ -111,7 +113,7 @@ export const getAllHubsFromDB = async (filters: IHubFilterOptions) => {
     data: hubs,
   };
 
-  if (isDefaultQuery) {
+  if (isDefaultQuery && redisClient.isOpen) {
     try {
       await redisClient.set(REDIS_HUBS_CACHE_KEY, JSON.stringify(response), {
         expiration: {

@@ -9,30 +9,30 @@ import dotenv from "dotenv";
 import path from "path";
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 var config_default = {
-  port: process.env.PORT,
-  database_url: process.env.DATABASE_URL,
-  app_url: process.env.APP_URL,
-  bcrypt_salt_rounds: process.env.BCRYPT_SALT_ROUNDS,
-  jwt_access_secret: process.env.JWT_ACCESS_SECRET,
-  jwt_refresh_secret: process.env.JWT_REFRESH_SECRET,
-  jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN,
-  jwt_refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN,
-  google_client_id: process.env.GOOGLE_CLIENT_ID,
-  admin_name: process.env.ADMIN_NAME,
-  admin_email: process.env.ADMIN_EMAIL,
-  admin_password: process.env.ADMIN_PASSWORD,
-  redis_user: process.env.REDIS_USER,
-  redis_password: process.env.REDIS_PASSWORD,
-  redis_host: process.env.REDIS_HOST,
-  redis_port: process.env.REDIS_PORT,
-  smtp_user: process.env.SMTP_USER,
-  smtp_password: process.env.SMTP_PASSWORD,
-  email_sender: process.env.EMAIL_SENDER,
-  stripe_secret_key: process.env.STRIPE_SECRET_KEY,
-  stripe_webhook_key: process.env.STRIPE_WEBHOOK_KEY,
-  cloudinary_cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  cloudinary_api_key: process.env.CLOUDINARY_API_KEY,
-  cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET
+  port: process.env.PORT || 5e3,
+  database_url: process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/dbname",
+  app_url: process.env.APP_URL || "*",
+  bcrypt_salt_rounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 12,
+  jwt_access_secret: process.env.JWT_ACCESS_SECRET || "courier_super_secret_access_token_jwt_2026_xyz",
+  jwt_refresh_secret: process.env.JWT_REFRESH_SECRET || "courier_super_secret_refresh_token_jwt_2026_xyz",
+  jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN || "1d",
+  jwt_refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  google_client_id: process.env.GOOGLE_CLIENT_ID || "demo-google-client-id",
+  admin_name: process.env.ADMIN_NAME || "Super Admin",
+  admin_email: process.env.ADMIN_EMAIL || "admin@example.com",
+  admin_password: process.env.ADMIN_PASSWORD || "AdminSecurePassword123!",
+  redis_user: process.env.REDIS_USER || "default",
+  redis_password: process.env.REDIS_PASSWORD || "",
+  redis_host: process.env.REDIS_HOST || "",
+  redis_port: process.env.REDIS_PORT || 6379,
+  smtp_user: process.env.SMTP_USER || "demo",
+  smtp_password: process.env.SMTP_PASSWORD || "demo",
+  email_sender: process.env.EMAIL_SENDER || "no-reply@courierservice.com",
+  stripe_secret_key: process.env.STRIPE_SECRET_KEY || "sk_test_placeholder_for_startup",
+  stripe_webhook_key: process.env.STRIPE_WEBHOOK_KEY || "whsec_demo",
+  cloudinary_cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "demo",
+  cloudinary_api_key: process.env.CLOUDINARY_API_KEY || "demo",
+  cloudinary_api_secret: process.env.CLOUDINARY_API_SECRET || "demo"
 };
 
 // src/modules/auth/auth.routes.ts
@@ -80,12 +80,16 @@ import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 var globalForPrisma = globalThis;
-var connectionString = process.env.DATABASE_URL;
+var NEON_DEFAULT_URL = "postgresql://user:password@localhost:5432/dbname";
+var connectionString = process.env.DATABASE_URL || NEON_DEFAULT_URL;
 var pool = new pg.Pool({
   connectionString,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  max: 10,
+  idleTimeoutMillis: 3e4,
+  connectionTimeoutMillis: 1e4
 });
 var adapter = new PrismaPg(pool);
 var prisma = globalForPrisma.prisma || new PrismaClient({
@@ -144,11 +148,12 @@ var redisClient = createClient({
   password: config_default.redis_password || void 0,
   socket: {
     host: config_default.redis_host || "localhost",
-    port: Number(config_default.redis_port) || 6379
+    port: Number(config_default.redis_port) || 6379,
+    connectTimeout: 2e3,
+    reconnectStrategy: false
   }
 });
 redisClient.on("error", (err) => {
-  console.warn("Redis Client Notice:", err.message);
 });
 
 // src/modules/auth/auth.service.ts
@@ -180,6 +185,7 @@ var AppError = class extends Error {
 };
 
 // src/modules/auth/auth.service.ts
+var inMemoryOtpStore = /* @__PURE__ */ new Map();
 var registerUser = async (payload) => {
   const {
     name,
@@ -449,15 +455,18 @@ var forgotPassword = async (payload) => {
   const otp = crypto.randomInt(1e5, 1e6).toString();
   const key = `forgot-password-otp:${isUserExist.email}`;
   const expirationSeconds = 5 * 60;
-  try {
-    await redisClient.set(key, otp, {
-      expiration: {
-        type: "EX",
-        value: expirationSeconds
-      }
-    });
-  } catch (err) {
-    console.error("Redis set OTP error:", err);
+  inMemoryOtpStore.set(key, { otp, expiresAt: Date.now() + 5 * 60 * 1e3 });
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.set(key, otp, {
+        expiration: {
+          type: "EX",
+          value: expirationSeconds
+        }
+      });
+    } catch (err) {
+      console.warn("Redis set OTP fallback to memory:", err);
+    }
   }
   const templatePath = path2.join(
     process.cwd(),
@@ -506,10 +515,18 @@ var resetPassword = async (payload) => {
   }
   const key = `forgot-password-otp:${isUserExist.email}`;
   let redisOtp = null;
-  try {
-    redisOtp = await redisClient.get(key);
-  } catch (err) {
-    console.error("Redis get OTP error:", err);
+  if (redisClient.isOpen) {
+    try {
+      redisOtp = await redisClient.get(key);
+    } catch (err) {
+      console.warn("Redis get OTP fallback to memory:", err);
+    }
+  }
+  if (!redisOtp) {
+    const memoryEntry = inMemoryOtpStore.get(key);
+    if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+      redisOtp = memoryEntry.otp;
+    }
   }
   if (!redisOtp || redisOtp !== otp) {
     throw new AppError(httpStatus2.BAD_REQUEST, "Invalid or expired OTP");
@@ -524,10 +541,13 @@ var resetPassword = async (payload) => {
       password: hashedPassword
     }
   });
-  try {
-    await redisClient.del([key]);
-  } catch (err) {
-    console.error("Redis del OTP error:", err);
+  inMemoryOtpStore.delete(key);
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.del([key]);
+    } catch (err) {
+      console.warn("Redis del OTP error:", err);
+    }
   }
   try {
     const templatePath = path2.join(
@@ -1343,10 +1363,12 @@ var generateHubCode = async (zoneName) => {
 import httpStatus8 from "http-status";
 var REDIS_HUBS_CACHE_KEY = "hubs:all";
 var invalidateHubsCache = async () => {
-  try {
-    await redisClient.del([REDIS_HUBS_CACHE_KEY]);
-  } catch (err) {
-    console.warn("Failed to invalidate hubs Redis cache:", err);
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.del([REDIS_HUBS_CACHE_KEY]);
+    } catch (err) {
+      console.warn("Failed to invalidate hubs Redis cache:", err);
+    }
   }
 };
 var createHubIntoDB = async (payload) => {
@@ -1381,7 +1403,7 @@ var getAllHubsFromDB = async (filters) => {
   const skip = (page - 1) * limit;
   const { searchTerm, zone, sortBy = "createdAt", sortOrder = "desc" } = filters;
   const isDefaultQuery = !searchTerm && !zone && page === 1 && limit === 10 && sortBy === "createdAt";
-  if (isDefaultQuery) {
+  if (isDefaultQuery && redisClient.isOpen) {
     try {
       const cached = await redisClient.get(REDIS_HUBS_CACHE_KEY);
       if (cached) {
@@ -1425,7 +1447,7 @@ var getAllHubsFromDB = async (filters) => {
     },
     data: hubs
   };
-  if (isDefaultQuery) {
+  if (isDefaultQuery && redisClient.isOpen) {
     try {
       await redisClient.set(REDIS_HUBS_CACHE_KEY, JSON.stringify(response), {
         expiration: {

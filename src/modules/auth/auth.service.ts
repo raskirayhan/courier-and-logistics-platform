@@ -21,6 +21,8 @@ import ejs from "ejs";
 import { transporter } from "../../lib/nodemailer";
 import { AppError } from "../../errors/AppError";
 
+const inMemoryOtpStore = new Map<string, { otp: string; expiresAt: number }>();
+
 const registerUser = async (payload: IRegisterUserPayload) => {
   const {
     name,
@@ -349,15 +351,19 @@ const forgotPassword = async (payload: IForgotPasswordPayload) => {
   const key = `forgot-password-otp:${isUserExist.email}`;
   const expirationSeconds = 5 * 60;
 
-  try {
-    await redisClient.set(key, otp, {
-      expiration: {
-        type: "EX",
-        value: expirationSeconds,
-      },
-    });
-  } catch (err) {
-    console.error("Redis set OTP error:", err);
+  inMemoryOtpStore.set(key, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.set(key, otp, {
+        expiration: {
+          type: "EX",
+          value: expirationSeconds,
+        },
+      });
+    } catch (err) {
+      console.warn("Redis set OTP fallback to memory:", err);
+    }
   }
 
   const templatePath = path.join(
@@ -417,10 +423,19 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
   const key = `forgot-password-otp:${isUserExist.email}`;
 
   let redisOtp: string | null = null;
-  try {
-    redisOtp = await redisClient.get(key);
-  } catch (err) {
-    console.error("Redis get OTP error:", err);
+  if (redisClient.isOpen) {
+    try {
+      redisOtp = await redisClient.get(key);
+    } catch (err) {
+      console.warn("Redis get OTP fallback to memory:", err);
+    }
+  }
+
+  if (!redisOtp) {
+    const memoryEntry = inMemoryOtpStore.get(key);
+    if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+      redisOtp = memoryEntry.otp;
+    }
   }
 
   if (!redisOtp || redisOtp !== otp) {
@@ -439,10 +454,13 @@ const resetPassword = async (payload: IResetPasswordPayload) => {
     },
   });
 
-  try {
-    await redisClient.del([key]);
-  } catch (err) {
-    console.error("Redis del OTP error:", err);
+  inMemoryOtpStore.delete(key);
+  if (redisClient.isOpen) {
+    try {
+      await redisClient.del([key]);
+    } catch (err) {
+      console.warn("Redis del OTP error:", err);
+    }
   }
 
   try {
