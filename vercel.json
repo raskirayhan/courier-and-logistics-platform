@@ -4,11 +4,5 @@
     "api/index.js": {
       "includeFiles": "node_modules/.prisma/**"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/api"
-    }
-  ]
+  }
 }
