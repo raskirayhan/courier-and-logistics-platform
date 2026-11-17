@@ -1,7 +1,7 @@
 {
-  "name": "industry-standard-project",
+  "name": "courier-and-logistics-platform",
   "version": "1.0.0",
-  "description": "Courier Service Backend API",
+  "description": "Courier & Logistics Platform Backend RESTful API",
   "license": "ISC",
   "author": "Raski Rayhan <raskirayhan@gmail.com>",
   "type": "module",
