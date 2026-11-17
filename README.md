@@ -7,7 +7,7 @@ A robust, enterprise-grade Courier & Logistics management platform backend built
 ## 📌 Submission Overview
 
 - **Project Name**: Courier & Logistics Platform Backend API
-- **Repository**: [https://github.com/raskirayhan/Industry-Standard-Project](https://github.com/raskirayhan/Industry-Standard-Project)
+- **Repository**: [https://github.com/raskirayhan/courier-and-logistics-platform](https://github.com/raskirayhan/courier-and-logistics-platform)
 - **Live API**: [https://industry-standard-project-raskirayhans-projects.vercel.app](https://industry-standard-project-raskirayhans-projects.vercel.app)
 - **API Documentation**: [`./postman_collection.json`](./postman_collection.json) (Import directly into Postman)
 - **Demo Admin Email**: `admin@example.com`
