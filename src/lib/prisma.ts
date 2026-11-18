@@ -5,10 +5,9 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-const NEON_DEFAULT_URL =
-  "postgresql://user:password@localhost:5432/dbname";
-
-const connectionString = process.env.DATABASE_URL || NEON_DEFAULT_URL;
+const connectionString =
+  process.env.DATABASE_URL ||
+  "postgresql://user:password@localhost:5432/courier_db";
 
 const pool = new pg.Pool({
   connectionString,

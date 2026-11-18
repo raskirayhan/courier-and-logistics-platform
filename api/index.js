@@ -10,7 +10,7 @@ import path from "path";
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 var config_default = {
   port: process.env.PORT || 5e3,
-  database_url: process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/dbname",
+  database_url: process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/courier_db",
   app_url: process.env.APP_URL || "*",
   bcrypt_salt_rounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 12,
   jwt_access_secret: process.env.JWT_ACCESS_SECRET || "courier_super_secret_access_token_jwt_2026_xyz",
@@ -72,8 +72,7 @@ import pg from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 var globalForPrisma = globalThis;
-var NEON_DEFAULT_URL = "postgresql://user:password@localhost:5432/dbname";
-var connectionString = process.env.DATABASE_URL || NEON_DEFAULT_URL;
+var connectionString = process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/courier_db";
 var pool = new pg.Pool({
   connectionString,
   ssl: {

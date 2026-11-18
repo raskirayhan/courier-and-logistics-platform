@@ -11,7 +11,7 @@ Follow this guide to deploy your project to **Vercel** with **Neon PostgreSQL** 
 3. Select region: **Singapore (ap-southeast-1)** or **Frankfurt (eu-central-1)** for fast latency.
 4. Copy the **Direct Connection String** (it looks like):
    ```text
-   postgresql://user:password@localhost:5432/dbname
+   postgresql://user:password@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
    ```
 5. Apply migrations and seed your Neon database from your terminal:
    ```bash

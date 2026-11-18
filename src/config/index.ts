@@ -7,7 +7,7 @@ export default {
   port: process.env.PORT || 5000,
   database_url:
     process.env.DATABASE_URL ||
-    "postgresql://user:password@localhost:5432/dbname",
+    "postgresql://user:password@localhost:5432/courier_db",
   app_url: process.env.APP_URL || "*",
   bcrypt_salt_rounds: Number(process.env.BCRYPT_SALT_ROUNDS) || 12,
   jwt_access_secret:
