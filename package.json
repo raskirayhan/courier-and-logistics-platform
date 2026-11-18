@@ -2,7 +2,7 @@
   "name": "courier-and-logistics-platform",
   "version": "1.0.0",
   "description": "Courier & Logistics Platform Backend RESTful API",
-  "license": "ISC",
+  "license": "MIT",
   "author": "Raski Rayhan <raskirayhan@gmail.com>",
   "type": "module",
   "main": "api/index.js",
