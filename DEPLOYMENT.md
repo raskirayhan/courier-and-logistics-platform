@@ -9,14 +9,14 @@ Follow this guide to deploy your project to **Vercel** with **Neon PostgreSQL** 
 1. Go to [https://neon.tech](https://neon.tech) and create an account / log in.
 2. Click **Create Project** -> Name: `courier-logistics-db`.
 3. Select region: **Singapore (ap-southeast-1)** or **Frankfurt (eu-central-1)** for fast latency.
-4. Copy the **Direct Connection String** (it looks like):
+4. Copy your database connection string (format):
    ```text
-   postgresql://user:password@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+   postgresql://user:password@localhost:5432/dbname
    ```
-5. Apply migrations and seed your Neon database from your terminal:
+5. Apply migrations and seed your database from your terminal:
    ```bash
-   DATABASE_URL="your_neon_connection_string" npx prisma db push
-   DATABASE_URL="your_neon_connection_string" npm run seed
+   DATABASE_URL="postgresql://user:password@localhost:5432/dbname" npx prisma db push
+   DATABASE_URL="postgresql://user:password@localhost:5432/dbname" npm run seed
    ```
 
 ---
@@ -45,13 +45,13 @@ Follow this guide to deploy your project to **Vercel** with **Neon PostgreSQL** 
 
 | Key | Example Value | Description |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | `postgresql://...@neon.tech/neondb?sslmode=require` | Your Neon connection string |
+| `DATABASE_URL` | `postgresql://user:password@localhost:5432/dbname` | Your database connection string |
 | `NODE_ENV` | `production` | App mode |
 | `PORT` | `5000` | Port |
 | `APP_URL` | `https://your-app.vercel.app` | Production URL |
 | `BCRYPT_SALT_ROUNDS` | `12` | Hashing rounds |
-| `JWT_ACCESS_SECRET` | `super_secret_access_token_random_32_chars` | Access secret |
-| `JWT_REFRESH_SECRET` | `super_secret_refresh_token_random_32_chars` | Refresh secret |
+| `JWT_ACCESS_SECRET` | `your_jwt_access_secret_key_minimum_32_chars` | Access secret |
+| `JWT_REFRESH_SECRET` | `your_jwt_refresh_secret_key_minimum_32_chars` | Refresh secret |
 | `JWT_ACCESS_EXPIRES_IN` | `1d` | Expiration |
 | `JWT_REFRESH_EXPIRES_IN` | `7d` | Expiration |
 | `ADMIN_NAME` | `Super Admin` | Seed Admin Name |
